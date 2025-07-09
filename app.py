@@ -143,6 +143,8 @@ all_stats = calculate_stats(all_df)
 
 # Initialize app
 app = dash.Dash(__name__)
+server = app.server  # THIS is needed!
+
 app.title = "Lego Minifig Prices"
 
 DARK_BG = "#181c20"
