@@ -318,20 +318,22 @@ app.clientside_callback(
 def update_clones_bingo_grid(page_width):
     try:
         mobile = page_width is not None and page_width < 700
-        side_padding = 12 if mobile else 32
-        available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
-        # Calculate max image size for mobile
         if mobile:
+            container_style = {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
+            available_width = int(page_width * 0.6)
+            columns = 5
             max_img_size = int((available_width / 5) * 0.92)
             max_img_size = max(40, min(110, max_img_size))
         else:
+            side_padding = 32
+            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
+            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
+            columns = max(2, int(page_width // 130)) if page_width else 12
             max_img_size = 130
         fig = create_bingo_scatter(clones_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        style = {"paddingLeft": side_padding, "paddingRight": side_padding}
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
-        return fig, style
+        return fig, container_style
     except Exception as e:
         fig = go.Figure()
         fig.update_layout(
@@ -340,7 +342,7 @@ def update_clones_bingo_grid(page_width):
             plot_bgcolor="#181c20",
             font_color="#f3f6fa"
         )
-        return fig, {"paddingLeft": 12, "paddingRight": 12}
+        return fig, {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
 
 @app.callback(
     Output("mandalorians-bingo-graph", "figure"),
@@ -350,19 +352,22 @@ def update_clones_bingo_grid(page_width):
 def update_mandalorians_bingo_grid(page_width):
     try:
         mobile = page_width is not None and page_width < 700
-        side_padding = 12 if mobile else 32
-        available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
         if mobile:
+            container_style = {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
+            available_width = int(page_width * 0.6)
+            columns = 5
             max_img_size = int((available_width / 5) * 0.92)
             max_img_size = max(40, min(110, max_img_size))
         else:
+            side_padding = 32
+            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
+            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
+            columns = max(2, int(page_width // 130)) if page_width else 12
             max_img_size = 130
         fig = create_bingo_scatter(mandalorians_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        style = {"paddingLeft": side_padding, "paddingRight": side_padding}
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
-        return fig, style
+        return fig, container_style
     except Exception as e:
         fig = go.Figure()
         fig.update_layout(
@@ -371,7 +376,7 @@ def update_mandalorians_bingo_grid(page_width):
             plot_bgcolor="#181c20",
             font_color="#f3f6fa"
         )
-        return fig, {"paddingLeft": 12, "paddingRight": 12}
+        return fig, {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
 
 @app.callback(
     Output("all-bingo-graph", "figure"),
@@ -381,19 +386,22 @@ def update_mandalorians_bingo_grid(page_width):
 def update_all_bingo_grid(page_width):
     try:
         mobile = page_width is not None and page_width < 700
-        side_padding = 12 if mobile else 32
-        available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
         if mobile:
+            container_style = {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
+            available_width = int(page_width * 0.6)
+            columns = 5
             max_img_size = int((available_width / 5) * 0.92)
             max_img_size = max(40, min(110, max_img_size))
         else:
+            side_padding = 32
+            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
+            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
+            columns = max(2, int(page_width // 130)) if page_width else 12
             max_img_size = 130
         fig = create_bingo_scatter(all_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        style = {"paddingLeft": side_padding, "paddingRight": side_padding}
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
-        return fig, style
+        return fig, container_style
     except Exception as e:
         fig = go.Figure()
         fig.update_layout(
@@ -402,7 +410,7 @@ def update_all_bingo_grid(page_width):
             plot_bgcolor="#181c20",
             font_color="#f3f6fa"
         )
-        return fig, {"paddingLeft": 12, "paddingRight": 12}
+        return fig, {"width": "60vw", "margin": "0 auto", "paddingLeft": 0, "paddingRight": 0}
 
 # Pie chart hover callbacks for both datasets
 @app.callback(
