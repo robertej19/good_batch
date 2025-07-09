@@ -339,7 +339,6 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
                     "padding": "2px",
                     "margin": "2px",
                     "display": "inline-block",
-                    "width": "calc(20% - 4px)",  # 5 columns on mobile
                     "boxSizing": "border-box",
                     "cursor": "pointer",
                     "transition": "box-shadow 0.2s",
@@ -356,9 +355,10 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
             "flexWrap": "wrap",
             "justifyContent": "center",
             "gap": "2px",
-            "width": "100%",
-            "maxWidth": "900px",
-            "margin": "0 auto",
+            "width": "100vw",
+            "maxWidth": "100vw",
+            "margin": "0",
+            "padding": "0",
         }
     )
 
@@ -713,29 +713,6 @@ def show_minifig_overlay(n_clicks_timestamps, current_styles):
             new_style = dict(style, **{"display": "none"})
         new_styles.append(new_style)
     return new_styles
-
-# Add responsive CSS for the grid
-with open("assets/minifig_grid.css", "w") as f:
-    f.write("""
-#minifig-grid > div {
-  width: calc(20% - 4px);
-}
-@media (max-width: 900px) {
-  #minifig-grid > div {
-    width: calc(25% - 4px);
-  }
-}
-@media (max-width: 700px) {
-  #minifig-grid > div {
-    width: calc(33.33% - 4px);
-  }
-}
-@media (max-width: 500px) {
-  #minifig-grid > div {
-    width: calc(50% - 4px);
-  }
-}
-""")
 
 # Run
 if __name__ == "__main__":
