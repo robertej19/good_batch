@@ -790,8 +790,8 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
 
     # Determine if mobile
     mobile = page_width is not None and page_width < 700
-    modal_width = "90vw" if mobile else "min(40vw, 98vw)"
-    left_col_width = "90px" if mobile else "120px"
+    modal_width = "95vw" if mobile else "min(60vw, 98vw)"
+    left_col_width = "25%" if mobile else "25%"
     img_max_width = "70px" if mobile else "110px"
     chart_line_width = 4 if mobile else 2
     chart_height = 180 if mobile else 220
@@ -807,13 +807,15 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
         style={"height": f"{chart_height}px", "width": "100%", "marginTop": "0"}
     )
     modal_body = html.Div([
+        html.H2(row["Name of Clone"], style={"marginTop": "0", "marginBottom": "1em", "fontSize": "1.1em", "lineHeight": "1.2", "textAlign": "center", "width": "100%"}),
         html.Div([
-            html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": img_max_width, "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
-            html.H2(row["Name of Clone"], style={"marginTop": "0.3em", "fontSize": "0.95em", "lineHeight": "1.15"}),
-            html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "0.85em", "marginTop": "0.3em"}),
-        ], style={"flex": f"0 0 {left_col_width}", "minWidth": "0", "marginRight": "1.2em", "display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "flex-start"}),
-        html.Div(price_chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
-    ], style={"display": "flex", "flexDirection": "row", "alignItems": "flex-start", "justifyContent": "center", "width": "100%", "overflow": "hidden"})
+            html.Div([
+                html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": img_max_width, "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
+                html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "0.85em", "marginTop": "0.3em", "textAlign": "center"}),
+            ], style={"flex": f"0 0 {left_col_width}", "minWidth": "0", "marginRight": "1.2em", "display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "flex-start"}),
+            html.Div(price_chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
+        ], style={"display": "flex", "flexDirection": "row", "alignItems": "flex-start", "justifyContent": "center", "width": "100%", "overflow": "hidden"}),
+    ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "flex-start", "width": "100%", "overflow": "hidden"})
     modal_style = {
         "display": "flex",
         "position": "fixed",
