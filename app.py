@@ -769,6 +769,7 @@ def display_all_pie_hover_image(hoverData):
 @app.callback(
     Output("minifig-info-panel", "children"),
     Output("minifig-modal-overlay", "style"),
+    Output("minifig-modal-content", "style"),
     Output("minifig-modal-body", "children"),
     Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
     State({"type": "minifig-img", "index": dash.ALL}, "id"),
@@ -780,17 +781,17 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
     ctx = callback_context
     # If close button was clicked, hide modal
     if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("minifig-modal-close"):
-        return dash.no_update, {"display": "none"}, dash.no_update
+        return dash.no_update, {"display": "none"}, dash.no_update, dash.no_update
     # Otherwise, show modal for the most recently clicked minifig
     if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
-        return "Click an image to see details.", {"display": "none"}, dash.no_update
+        return "Click an image to see details.", {"display": "none"}, dash.no_update, dash.no_update
     idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
     i = ids[idx]["index"]
     row = all_grid_df.iloc[i]
 
     # Determine if mobile
     mobile = page_width is not None and page_width < 700
-    modal_width = "95vw" if mobile else "min(60vw, 98vw)"
+    modal_width = "98vw" if mobile else "min(85vw, 98vw)"
     left_col_width = "25%" if mobile else "25%"
     img_max_width = "70px" if mobile else "110px"
     chart_line_width = 4 if mobile else 2
@@ -829,7 +830,22 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
         "alignItems": "flex-start",
         "pointerEvents": "none",
     }
-    return info_panel, modal_style, modal_body
+    modal_content_style = {
+        "margin": "5vh auto 0 auto",
+        "position": "relative",
+        "top": "5vh",
+        "width": modal_width,
+        "background": DARK_CARD,
+        "borderRadius": "18px",
+        "boxShadow": DARK_SHADOW,
+        "padding": "1.5em 1em 1em 1em",
+        "textAlign": "center",
+        "color": DARK_TEXT,
+        "zIndex": 1001,
+        "pointerEvents": "auto",
+        "fontSize": "1em",
+    }
+    return info_panel, modal_style, modal_content_style, modal_body
 
 @app.callback(
     Output({"type": "minifig-overlay", "index": dash.ALL}, "style"),
