@@ -370,7 +370,7 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
     )
 
 # Helper to create a price history chart for a single minifig
-def create_single_minifig_price_chart(swid, dark_mode=True):
+def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_height=220):
     df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
     minifig_df = df[df["SW_ID"] == swid]
     if minifig_df.empty:
@@ -382,7 +382,7 @@ def create_single_minifig_price_chart(swid, dark_mode=True):
         y=minifig_df["Q1"],
         mode="lines",
         name="Q1 (25th %)",
-        line=dict(color="#4fc3f7", width=2),
+        line=dict(color="#4fc3f7", width=line_width),
     ))
     # Q3 line
     fig.add_trace(go.Scatter(
@@ -390,7 +390,7 @@ def create_single_minifig_price_chart(swid, dark_mode=True):
         y=minifig_df["Q3"],
         mode="lines",
         name="Q3 (75th %)",
-        line=dict(color="#1976d2", width=2),
+        line=dict(color="#1976d2", width=line_width),
         fill='tonexty',
         fillcolor="rgba(33, 150, 243, 0.18)",
     ))
@@ -399,7 +399,7 @@ def create_single_minifig_price_chart(swid, dark_mode=True):
         xaxis_title="Date",
         yaxis_title="Value ($)",
         margin=dict(l=10, r=10, t=40, b=10),
-        height=220,
+        height=chart_height,
         font={"size": 10},
         showlegend=False,
     )
@@ -773,9 +773,10 @@ def display_all_pie_hover_image(hoverData):
     Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
     State({"type": "minifig-img", "index": dash.ALL}, "id"),
     Input("minifig-modal-close", "n_clicks"),
+    State("page-width-store", "data"),
     prevent_initial_call=True,
 )
-def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks):
+def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_width):
     ctx = callback_context
     # If close button was clicked, hide modal
     if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("minifig-modal-close"):
@@ -786,22 +787,31 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks):
     idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
     i = ids[idx]["index"]
     row = all_grid_df.iloc[i]
+
+    # Determine if mobile
+    mobile = page_width is not None and page_width < 700
+    modal_width = "90vw" if mobile else "min(40vw, 98vw)"
+    left_col_width = "90px" if mobile else "120px"
+    img_max_width = "70px" if mobile else "110px"
+    chart_line_width = 4 if mobile else 2
+    chart_height = 180 if mobile else 220
+
     info_panel = html.Div([
         html.H3(row["Name of Clone"]),
         html.P(f"Price: ${row['Cost (BrickEconomy)']:.2f}"),
         html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "160px", "margin": "1em auto", "display": "block", "background": "#fff", "borderRadius": "10px"}),
     ])
     price_chart = dcc.Graph(
-        figure=create_single_minifig_price_chart(row["SW ID"]),
+        figure=create_single_minifig_price_chart(row["SW ID"], line_width=chart_line_width, chart_height=chart_height),
         config={"displayModeBar": False},
-        style={"height": "220px", "width": "100%", "marginTop": "0"}
+        style={"height": f"{chart_height}px", "width": "100%", "marginTop": "0"}
     )
     modal_body = html.Div([
         html.Div([
-            html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": "110px", "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
+            html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": img_max_width, "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
             html.H2(row["Name of Clone"], style={"marginTop": "0.3em", "fontSize": "0.95em", "lineHeight": "1.15"}),
             html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "0.85em", "marginTop": "0.3em"}),
-        ], style={"flex": "0 0 120px", "minWidth": "0", "marginRight": "1.2em", "display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "flex-start"}),
+        ], style={"flex": f"0 0 {left_col_width}", "minWidth": "0", "marginRight": "1.2em", "display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "flex-start"}),
         html.Div(price_chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
     ], style={"display": "flex", "flexDirection": "row", "alignItems": "flex-start", "justifyContent": "center", "width": "100%", "overflow": "hidden"})
     modal_style = {
@@ -809,7 +819,7 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks):
         "position": "fixed",
         "top": 0,
         "left": 0,
-        "width": "100vw",
+        "width": modal_width,
         "height": "100vh",
         "background": "transparent",
         "zIndex": 1000,
