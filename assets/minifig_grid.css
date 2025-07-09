@@ -32,3 +32,55 @@
   display: block;
   margin: 0 auto;
 }
+
+/* Modal overlay for minifig popout */
+#minifig-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  z-index: 1000;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+#minifig-modal-content {
+  margin: 5vh auto 0 auto;
+  position: relative;
+  top: 5vh;
+  width: min(420px, 90vw);
+  background: #23272b;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px #111;
+  padding: 2.5em 1.5em 1.5em 1.5em;
+  text-align: center;
+  color: #f3f6fa;
+  z-index: 1001;
+  pointer-events: auto;
+}
+
+#minifig-modal-content img {
+  width: 220px;
+  max-width: 90vw;
+  margin: 0 auto 1.2em auto;
+  display: block;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px #111;
+}
+
+#minifig-modal-close {
+  position: absolute;
+  top: 0.7em;
+  right: 1.1em;
+  font-size: 2em;
+  background: none;
+  border: none;
+  color: #f3f6fa;
+  cursor: pointer;
+  z-index: 1002;
+}

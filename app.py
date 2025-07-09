@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import subprocess
 from chart import create_price_trend_chart, create_value_pie_chart, create_bingo_scatter
+import plotly.express as px
 from dash.dependencies import Input, Output
 from plotly.graph_objs import Figure
 import plotly.graph_objects as go
@@ -86,6 +87,9 @@ mandalorians_df = load_and_clean_df(MANDALORIANS_CSV_FILENAME)
 
 # Create combined dataset
 all_df = pd.concat([clones_df, mandalorians_df], ignore_index=True)
+
+# Create a sorted DataFrame for the grid (descending by value, reindexed)
+all_grid_df = all_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
 
 # Combine all SW IDs for scraping
 all_sw_ids = []
@@ -365,6 +369,50 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
         }
     )
 
+# Helper to create a price history chart for a single minifig
+def create_single_minifig_price_chart(swid, dark_mode=True):
+    df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    minifig_df = df[df["SW_ID"] == swid]
+    if minifig_df.empty:
+        return go.Figure()
+    fig = go.Figure()
+    # Q1 line
+    fig.add_trace(go.Scatter(
+        x=minifig_df["Date"],
+        y=minifig_df["Q1"],
+        mode="lines",
+        name="Q1 (25th %)",
+        line=dict(color="#4fc3f7", width=2),
+    ))
+    # Q3 line
+    fig.add_trace(go.Scatter(
+        x=minifig_df["Date"],
+        y=minifig_df["Q3"],
+        mode="lines",
+        name="Q3 (75th %)",
+        line=dict(color="#1976d2", width=2),
+        fill='tonexty',
+        fillcolor="rgba(33, 150, 243, 0.18)",
+    ))
+    fig.update_layout(
+        title="Price History (Q1–Q3 Band)",
+        xaxis_title="Date",
+        yaxis_title="Value ($)",
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=260,
+        font={"size": 15},
+        showlegend=False,
+    )
+    if dark_mode:
+        fig.update_layout(
+            plot_bgcolor=DARK_BG,
+            paper_bgcolor=DARK_BG,
+            font_color=DARK_TEXT,
+            xaxis=dict(gridcolor=DARK_BORDER, zerolinecolor=DARK_BORDER),
+            yaxis=dict(gridcolor=DARK_BORDER, zerolinecolor=DARK_BORDER),
+        )
+    return fig
+
 # Add a new tab for the HTML/CSS grid
 app.layout = html.Div([
     html.H1("Lego Minifigure Price Trends", style={"textAlign": "center", "fontSize": "2.7em", "marginBottom": "0.2em", "color": DARK_TEXT}),
@@ -393,8 +441,58 @@ app.layout = html.Div([
             label="Grid", 
             children=[
                 html.H2("All Minifigs - Responsive Grid", style={"textAlign": "center", "color": DARK_TEXT, "marginTop": "1em"}),
-                make_minifig_grid(all_df),
+                make_minifig_grid(all_grid_df),
                 html.Div(id="minifig-info-panel", style={"marginTop": "2em", "color": DARK_TEXT, "textAlign": "center", "fontSize": "1.2em"}),
+                # Modal overlay for minifig popout
+                html.Div(
+                    id="minifig-modal-overlay",
+                    style={
+                        "display": "none",
+                        "position": "fixed",
+                        "top": 0,
+                        "left": 0,
+                        "width": "100vw",
+                        "height": "100vh",
+                        "background": "transparent",  # No gray overlay
+                        "zIndex": 1000,
+                        "justifyContent": "center",
+                        "alignItems": "flex-start",
+                        "pointerEvents": "none",  # Allow clicks to pass through except modal content
+                    },
+                    children=[
+                        html.Div(
+                            id="minifig-modal-content",
+                            style={
+                                "margin": "5vh auto 0 auto",
+                                "position": "relative",
+                                "top": "5vh",
+                                "width": "min(420px, 90vw)",
+                                "background": DARK_CARD,
+                                "borderRadius": "18px",
+                                "boxShadow": DARK_SHADOW,
+                                "padding": "2.5em 1.5em 1.5em 1.5em",
+                                "textAlign": "center",
+                                "color": DARK_TEXT,
+                                "zIndex": 1001,
+                                "pointerEvents": "auto",  # Only modal content is clickable
+                            },
+                            children=[
+                                html.Button("×", id="minifig-modal-close", n_clicks=0, style={
+                                    "position": "absolute",
+                                    "top": "0.7em",
+                                    "right": "1.1em",
+                                    "fontSize": "2em",
+                                    "background": "none",
+                                    "border": "none",
+                                    "color": DARK_TEXT,
+                                    "cursor": "pointer",
+                                    "zIndex": 1002,
+                                }),
+                                html.Div(id="minifig-modal-body")
+                            ]
+                        )
+                    ]
+                ),
             ],
             style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
             selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
@@ -669,28 +767,54 @@ def display_all_pie_hover_image(hoverData):
 # Info panel callback for grid
 @app.callback(
     Output("minifig-info-panel", "children"),
+    Output("minifig-modal-overlay", "style"),
+    Output("minifig-modal-body", "children"),
     Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
     State({"type": "minifig-img", "index": dash.ALL}, "id"),
+    Input("minifig-modal-close", "n_clicks"),
     prevent_initial_call=True,
 )
-def show_minifig_info(n_clicks_timestamps, ids):
-    print("Callback fired!")
-    print("n_clicks_timestamps:", n_clicks_timestamps)
-    print("ids:", ids)
+def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks):
+    ctx = callback_context
+    # If close button was clicked, hide modal
+    if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("minifig-modal-close"):
+        return dash.no_update, {"display": "none"}, dash.no_update
+    # Otherwise, show modal for the most recently clicked minifig
     if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
-        print("No image has been clicked yet.")
-        return "Click an image to see details."
+        return "Click an image to see details.", {"display": "none"}, dash.no_update
     idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
-    print(f"Selected index: {idx}")
     i = ids[idx]["index"]
-    print(f"Selected minifig index in DataFrame: {i}")
-    row = all_df.iloc[i]
-    print(f"Selected minifig: {row['Name of Clone']}")
-    return html.Div([
+    row = all_grid_df.iloc[i]
+    info_panel = html.Div([
         html.H3(row["Name of Clone"]),
         html.P(f"Price: ${row['Cost (BrickEconomy)']:.2f}"),
         html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "160px", "margin": "1em auto", "display": "block", "background": "#fff", "borderRadius": "10px"}),
     ])
+    price_chart = dcc.Graph(
+        figure=create_single_minifig_price_chart(row["SW ID"]),
+        config={"displayModeBar": False},
+        style={"height": "260px", "marginTop": "1.2em"}
+    )
+    modal_body = html.Div([
+        html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "220px", "maxWidth": "90vw", "margin": "0 auto 1.2em auto", "display": "block", "background": "#fff", "borderRadius": "12px", "boxShadow": DARK_SHADOW}),
+        html.H2(row["Name of Clone"], style={"marginTop": "0.7em", "fontSize": "2em"}),
+        html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "1.3em", "marginTop": "0.7em"}),
+        price_chart,
+    ])
+    modal_style = {
+        "display": "flex",
+        "position": "fixed",
+        "top": 0,
+        "left": 0,
+        "width": "100vw",
+        "height": "100vh",
+        "background": "transparent",
+        "zIndex": 1000,
+        "justifyContent": "center",
+        "alignItems": "flex-start",
+        "pointerEvents": "none",
+    }
+    return info_panel, modal_style, modal_body
 
 @app.callback(
     Output({"type": "minifig-overlay", "index": dash.ALL}, "style"),
