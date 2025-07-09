@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, State, callback_context
 import pandas as pd
 import os
 import subprocess
@@ -7,6 +7,7 @@ from chart import create_price_trend_chart, create_value_pie_chart, create_bingo
 from dash.dependencies import Input, Output
 from plotly.graph_objs import Figure
 import plotly.graph_objects as go
+import numpy as np
 
 
 # Constants
@@ -76,7 +77,7 @@ def load_and_clean_df(filename):
     
     # Ensure "Owned" is integer
     df["Owned"] = df["Owned"].fillna(0).astype(int)
-    
+
     return df
 
 # Load both datasets
@@ -271,13 +272,101 @@ def create_dataset_tab(df, stats, dataset_name):
         ),
     ])
 
-# Layout with tabs
+def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows for multiple grids if needed
+    df = df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
+    return html.Div(
+        [
+            html.Div([
+                html.Img(
+                    src=f"/assets/images/{row['SW ID']}.png",
+                    style={"width": "100%", "borderRadius": "10px", "background": "#fff"},
+                ),
+                html.Div(
+                    [
+                        html.Div(
+                            row["Name of Clone"],
+                            style={
+                                "fontWeight": "bold",
+                                "fontSize": "min(1.1em, 4vw)",  # Shrinks on small screens
+                                "overflowWrap": "break-word",
+                                "wordBreak": "break-word",
+                                "whiteSpace": "normal",
+                                "lineHeight": "1.1",
+                                "maxHeight": "4.4em",  # Allow up to 4 lines
+                                "overflow": "auto",
+                                "width": "100%",
+                                "margin": "0 auto",
+                                "padding": "0 2px",
+                            }
+                        ),
+                        html.Div(
+                            f"${row['Cost (BrickEconomy)']:.2f}",
+                            style={
+                                "fontSize": "1em",
+                                "textAlign": "center",
+                                "width": "100%",
+                                "marginTop": "0.3em"
+                            }
+                        ),
+                    ],
+                    id={"type": f"{grid_id_prefix}-overlay", "index": i},
+                    style={
+                        "position": "absolute",
+                        "top": 0,
+                        "left": 0,
+                        "width": "100%",
+                        "height": "100%",
+                        "background": "rgba(24,28,32,0.97)",
+                        "color": "#fff",
+                        "display": "none",
+                        "alignItems": "flex-start",  # Start near the top
+                        "justifyContent": "flex-start",  # Start near the top
+                        "flexDirection": "column",
+                        "zIndex": 2,
+                        "borderRadius": "10px",
+                        "textAlign": "center",
+                        "padding": "12px 6px",
+                        "fontSize": "1.1em",
+                        "boxShadow": "0 2px 12px #111",
+                    },
+                ),
+            ],
+                id={"type": f"{grid_id_prefix}-img", "index": i},
+                n_clicks=0,
+                style={
+                    "aspectRatio": "1/1",
+                    "background": "#000" if row.get("Owned", False) else "#8b0000",
+                    "padding": "2px",
+                    "margin": "2px",
+                    "display": "inline-block",
+                    "width": "calc(20% - 4px)",  # 5 columns on mobile
+                    "boxSizing": "border-box",
+                    "cursor": "pointer",
+                    "transition": "box-shadow 0.2s",
+                    "position": "relative",
+                    "overflow": "hidden",
+                },
+                tabIndex=0  # for accessibility
+            )
+            for i, row in df.iterrows()
+        ],
+        id=f"{grid_id_prefix}-grid",
+        style={
+            "display": "flex",
+            "flexWrap": "wrap",
+            "justifyContent": "center",
+            "gap": "2px",
+            "width": "100%",
+            "maxWidth": "900px",
+            "margin": "0 auto",
+        }
+    )
+
+# Add a new tab for the HTML/CSS grid
 app.layout = html.Div([
     html.H1("Lego Minifigure Price Trends", style={"textAlign": "center", "fontSize": "2.7em", "marginBottom": "0.2em", "color": DARK_TEXT}),
     dcc.Store(id="page-width-store"),
     dcc.Interval(id="interval", interval=1000, n_intervals=0, max_intervals=1),
-    
-    # Tabs
     dcc.Tabs([
         dcc.Tab(
             label="Clones", 
@@ -294,6 +383,16 @@ app.layout = html.Div([
         dcc.Tab(
             label="All", 
             children=create_dataset_tab(all_df, all_stats, "All"),
+            style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
+            selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
+        ),
+        dcc.Tab(
+            label="Grid", 
+            children=[
+                html.H2("All Minifigs - Responsive Grid", style={"textAlign": "center", "color": DARK_TEXT, "marginTop": "1em"}),
+                make_minifig_grid(all_df),
+                html.Div(id="minifig-info-panel", style={"marginTop": "2em", "color": DARK_TEXT, "textAlign": "center", "fontSize": "1.2em"}),
+            ],
             style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
             selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
         ),
@@ -563,6 +662,80 @@ def display_all_pie_hover_image(hoverData):
             html.H3(short_name, style={"marginTop": "1.5em", "fontSize": "2em", "color": DARK_TEXT})
         ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "height": "100%"})
     return html.Div("Hover over a slice to see the minifigure image.", style={"color": DARK_SUBTEXT, "textAlign": "center"})
+
+# Info panel callback for grid
+@app.callback(
+    Output("minifig-info-panel", "children"),
+    Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
+    State({"type": "minifig-img", "index": dash.ALL}, "id"),
+    prevent_initial_call=True,
+)
+def show_minifig_info(n_clicks_timestamps, ids):
+    print("Callback fired!")
+    print("n_clicks_timestamps:", n_clicks_timestamps)
+    print("ids:", ids)
+    if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
+        print("No image has been clicked yet.")
+        return "Click an image to see details."
+    idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
+    print(f"Selected index: {idx}")
+    i = ids[idx]["index"]
+    print(f"Selected minifig index in DataFrame: {i}")
+    row = all_df.iloc[i]
+    print(f"Selected minifig: {row['Name of Clone']}")
+    return html.Div([
+        html.H3(row["Name of Clone"]),
+        html.P(f"Price: ${row['Cost (BrickEconomy)']:.2f}"),
+        html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "160px", "margin": "1em auto", "display": "block", "background": "#fff", "borderRadius": "10px"}),
+    ])
+
+@app.callback(
+    Output({"type": "minifig-overlay", "index": dash.ALL}, "style"),
+    Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
+    State({"type": "minifig-overlay", "index": dash.ALL}, "style"),
+    prevent_initial_call=True,
+)
+def show_minifig_overlay(n_clicks_timestamps, current_styles):
+    print("Overlay callback fired!")
+    print("n_clicks_timestamps:", n_clicks_timestamps)
+    if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
+        print("No image has been clicked yet.")
+        # Hide all overlays
+        return [dict(style, **{"display": "none"}) for style in current_styles]
+    idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
+    print(f"Selected overlay index: {idx}")
+    new_styles = []
+    for i, style in enumerate(current_styles):
+        if i == idx:
+            # Show overlay for clicked image
+            new_style = dict(style, **{"display": "flex"})
+        else:
+            new_style = dict(style, **{"display": "none"})
+        new_styles.append(new_style)
+    return new_styles
+
+# Add responsive CSS for the grid
+with open("assets/minifig_grid.css", "w") as f:
+    f.write("""
+#minifig-grid > div {
+  width: calc(20% - 4px);
+}
+@media (max-width: 900px) {
+  #minifig-grid > div {
+    width: calc(25% - 4px);
+  }
+}
+@media (max-width: 700px) {
+  #minifig-grid > div {
+    width: calc(33.33% - 4px);
+  }
+}
+@media (max-width: 500px) {
+  #minifig-grid > div {
+    width: calc(50% - 4px);
+  }
+}
+""")
 
 # Run
 if __name__ == "__main__":

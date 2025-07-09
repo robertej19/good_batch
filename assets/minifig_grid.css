@@ -1,0 +1,19 @@
+
+#minifig-grid > div {
+  width: calc(20% - 4px);
+}
+@media (max-width: 900px) {
+  #minifig-grid > div {
+    width: calc(25% - 4px);
+  }
+}
+@media (max-width: 700px) {
+  #minifig-grid > div {
+    width: calc(33.33% - 4px);
+  }
+}
+@media (max-width: 500px) {
+  #minifig-grid > div {
+    width: calc(50% - 4px);
+  }
+}
