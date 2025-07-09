@@ -466,15 +466,16 @@ app.layout = html.Div([
                                 "margin": "5vh auto 0 auto",
                                 "position": "relative",
                                 "top": "5vh",
-                                "width": "min(420px, 90vw)",
+                                "width": "min(30vw, 98vw)",
                                 "background": DARK_CARD,
                                 "borderRadius": "18px",
                                 "boxShadow": DARK_SHADOW,
-                                "padding": "2.5em 1.5em 1.5em 1.5em",
+                                "padding": "1.5em 1em 1em 1em",
                                 "textAlign": "center",
                                 "color": DARK_TEXT,
                                 "zIndex": 1001,
                                 "pointerEvents": "auto",  # Only modal content is clickable
+                                "fontSize": "1em",
                             },
                             children=[
                                 html.Button("×", id="minifig-modal-close", n_clicks=0, style={
@@ -796,9 +797,9 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks):
         style={"height": "260px", "marginTop": "1.2em"}
     )
     modal_body = html.Div([
-        html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "220px", "maxWidth": "90vw", "margin": "0 auto 1.2em auto", "display": "block", "background": "#fff", "borderRadius": "12px", "boxShadow": DARK_SHADOW}),
-        html.H2(row["Name of Clone"], style={"marginTop": "0.7em", "fontSize": "2em"}),
-        html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "1.3em", "marginTop": "0.7em"}),
+        html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": "110px", "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
+        html.H2(row["Name of Clone"], style={"marginTop": "0.3em", "fontSize": "0.95em", "lineHeight": "1.15"}),
+        html.P(f"Current Price: ${row['Cost (BrickEconomy)']:.2f}", style={"fontSize": "0.85em", "marginTop": "0.3em"}),
         price_chart,
     ])
     modal_style = {
