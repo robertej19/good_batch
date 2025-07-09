@@ -278,8 +278,13 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
         [
             html.Div([
                 html.Img(
-                    src=f"/assets/images/{row['SW ID']}.png",
-                    style={"width": "100%", "borderRadius": "10px", "background": "#fff"},
+                    src=f"/assets/images_bg_removed/{row['SW ID']}.png",
+                    style={
+                        "width": "100%",
+                        "borderRadius": "10px",
+                        "background": "transparent",
+                        "display": "block",
+                    },
                 ),
                 html.Div(
                     [
@@ -335,7 +340,7 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
                 n_clicks=0,
                 style={
                     "aspectRatio": "1/1",
-                    "background": "#000" if row.get("Owned", False) else "#8b0000",
+                    "background": ("#222" if row.get("Owned", False) else "#8b0000"),
                     "padding": "2px",
                     "margin": "2px",
                     "display": "inline-block",
@@ -351,14 +356,12 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
         ],
         id=f"{grid_id_prefix}-grid",
         style={
+            # Remove 'padding', 'width', and 'maxWidth' so CSS can control it
             "display": "flex",
             "flexWrap": "wrap",
             "justifyContent": "center",
             "gap": "2px",
-            "width": "100vw",
-            "maxWidth": "100vw",
             "margin": "0",
-            "padding": "0",
         }
     )
 
