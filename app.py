@@ -159,6 +159,7 @@ DARK_PIE_COLORS = [
 ]
 DARK_GREEN = "#1b5e20"
 DARK_RED = "#8b0000"
+DARK_BLACK = "#000000"
 
 def smart_truncate_name(name, max_len=32):
     # If name is short, return as is
@@ -311,8 +312,9 @@ app.clientside_callback(
 )
 def update_clones_bingo_grid(page_width):
     try:
-        columns = max(2, int(page_width // 130)) if page_width else 12
-        fig = create_bingo_scatter(clones_df, columns=columns, dark_mode=True)
+        mobile = page_width is not None and page_width < 700
+        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
+        fig = create_bingo_scatter(clones_df, columns=columns, dark_mode=True, mobile=mobile)
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
         return fig
@@ -332,8 +334,9 @@ def update_clones_bingo_grid(page_width):
 )
 def update_mandalorians_bingo_grid(page_width):
     try:
-        columns = max(2, int(page_width // 130)) if page_width else 12
-        fig = create_bingo_scatter(mandalorians_df, columns=columns, dark_mode=True)
+        mobile = page_width is not None and page_width < 700
+        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
+        fig = create_bingo_scatter(mandalorians_df, columns=columns, dark_mode=True, mobile=mobile)
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
         return fig
@@ -353,8 +356,9 @@ def update_mandalorians_bingo_grid(page_width):
 )
 def update_all_bingo_grid(page_width):
     try:
-        columns = max(2, int(page_width // 130)) if page_width else 12
-        fig = create_bingo_scatter(all_df, columns=columns, dark_mode=True)
+        mobile = page_width is not None and page_width < 700
+        columns = 5 if mobile else (max(2, int(page_width // 130)) if page_width else 12)
+        fig = create_bingo_scatter(all_df, columns=columns, dark_mode=True, mobile=mobile)
         if fig is None or not isinstance(fig, Figure):
             raise ValueError("Invalid figure returned")
         return fig

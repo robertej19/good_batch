@@ -91,7 +91,7 @@ def create_value_pie_chart(df, title="Percentage of Total Value by Minifigure", 
         )
     return fig
 
-def create_bingo_scatter(df, columns=8, dark_mode=True):
+def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False):
     # Sort by value descending
     df = df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
     # Prepare grid positions
@@ -100,17 +100,20 @@ def create_bingo_scatter(df, columns=8, dark_mode=True):
     x = [(i % columns) for i in range(n)]
     y = [-(i // columns) for i in range(n)]  # negative so first row is at top
     # Color and hover info
-    marker_colors = ["#1b5e20" if owned else "#8b0000" for owned in df["Owned"]]
+    marker_colors = ["#000000" if owned else "#8b0000" for owned in df["Owned"]]
     hover_texts = [
         f"<b>{smart_truncate_name(row['Name of Clone'])}</b><br>${row['Cost (BrickEconomy)']:,.2f}" for _, row in df.iterrows()
     ]
+    # Marker and image size for mobile/desktop
+    marker_size = 60 if mobile else 120
+    image_size = 0.45 if mobile else 0.9
     # Scatter for colored backgrounds
     fig = go.Figure(go.Scatter(
         x=x,
         y=y,
         mode="markers",
         marker=dict(
-            size=120,
+            size=marker_size,
             color=marker_colors,
             symbol="square",
             line=dict(width=0),
@@ -128,7 +131,7 @@ def create_bingo_scatter(df, columns=8, dark_mode=True):
                 source=img_url,
                 xref="x", yref="y",
                 x=x[i], y=y[i],
-                sizex=0.9, sizey=0.9,
+                sizex=image_size, sizey=image_size,
                 xanchor="center", yanchor="middle",
                 layer="above"
             )
@@ -149,8 +152,8 @@ def create_bingo_scatter(df, columns=8, dark_mode=True):
         plot_bgcolor="#181c20" if dark_mode else "#fff",
         paper_bgcolor="#181c20" if dark_mode else "#fff",
         margin=dict(l=0, r=0, t=0, b=0),
-        height=rows*130+40,
-        width=columns*130+40,
+        height=rows*65+40 if mobile else rows*130+40,
+        width=columns*65+40 if mobile else columns*130+40,
         hoverlabel=dict(bgcolor="#23272b" if dark_mode else "#fff", font_size=18, font_color="#f3f6fa" if dark_mode else "#222"),
     )
     return fig
