@@ -91,7 +91,7 @@ def create_value_pie_chart(df, title="Percentage of Total Value by Minifigure", 
         )
     return fig
 
-def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False):
+def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False, mobile_image_size=65):
     # Sort by value descending
     df = df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
     # Prepare grid positions
@@ -105,8 +105,12 @@ def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False):
         f"<b>{smart_truncate_name(row['Name of Clone'])}</b><br>${row['Cost (BrickEconomy)']:,.2f}" for _, row in df.iterrows()
     ]
     # Marker and image size for mobile/desktop
-    marker_size = 60 if mobile else 120
-    image_size = 0.45 if mobile else 0.9
+    if mobile:
+        marker_size = mobile_image_size
+        image_size = mobile_image_size / 130  # 130 is the desktop base size
+    else:
+        marker_size = 120
+        image_size = 0.9
     # Scatter for colored backgrounds
     fig = go.Figure(go.Scatter(
         x=x,
@@ -152,8 +156,8 @@ def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False):
         plot_bgcolor="#181c20" if dark_mode else "#fff",
         paper_bgcolor="#181c20" if dark_mode else "#fff",
         margin=dict(l=0, r=0, t=0, b=0),
-        height=rows*65+40 if mobile else rows*130+40,
-        width=columns*65+40 if mobile else columns*130+40,
+        height=rows*mobile_image_size+40 if mobile else rows*130+40,
+        width=columns*mobile_image_size+40 if mobile else columns*130+40,
         hoverlabel=dict(bgcolor="#23272b" if dark_mode else "#fff", font_size=18, font_color="#f3f6fa" if dark_mode else "#222"),
     )
     return fig
