@@ -1,0 +1,5 @@
+.hoverlayer .hovertext {
+    white-space: normal !important;
+    max-width: 220px;
+    word-break: break-word;
+} 

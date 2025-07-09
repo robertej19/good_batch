@@ -102,15 +102,17 @@ def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False, mobile_ima
     # Color and hover info
     marker_colors = ["#000000" if owned else "#8b0000" for owned in df["Owned"]]
     hover_texts = [
-        f"<b>{smart_truncate_name(row['Name of Clone'])}</b><br>${row['Cost (BrickEconomy)']:,.2f}" for _, row in df.iterrows()
+        f"<b>{row['Name of Clone']}</b><br>${row['Cost (BrickEconomy)']:,.2f}" for _, row in df.iterrows()
     ]
     # Marker and image size for mobile/desktop
     if mobile:
         marker_size = mobile_image_size
         image_size = mobile_image_size / 130  # 130 is the desktop base size
+        cell_size = int(marker_size * 1.05)  # reduce from 1.3 to 1.05 for less padding
     else:
         marker_size = 120
         image_size = 0.9
+        cell_size = 110  # reduce from 130 to 110 for less padding
     # Scatter for colored backgrounds
     fig = go.Figure(go.Scatter(
         x=x,
@@ -156,8 +158,8 @@ def create_bingo_scatter(df, columns=8, dark_mode=True, mobile=False, mobile_ima
         plot_bgcolor="#181c20" if dark_mode else "#fff",
         paper_bgcolor="#181c20" if dark_mode else "#fff",
         margin=dict(l=0, r=0, t=0, b=0),
-        height=rows*mobile_image_size+40 if mobile else rows*130+40,
-        width=columns*mobile_image_size+40 if mobile else columns*130+40,
+        height=rows*cell_size+40,
+        width=columns*cell_size+40,
         hoverlabel=dict(bgcolor="#23272b" if dark_mode else "#fff", font_size=18, font_color="#f3f6fa" if dark_mode else "#222"),
     )
     return fig
