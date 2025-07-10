@@ -60,8 +60,11 @@ def download_and_clean_csv(filename, expected_columns, sheet_gid=None):
         print(f"Using cached file: {filename}")
 
 # Download and clean both datasets
-download_and_clean_csv(CLONES_CSV_FILENAME, EXPECTED_COLUMNS, sheet_gid="0")  # First sheet (clones)
-download_and_clean_csv(MANDALORIANS_CSV_FILENAME, EXPECTED_COLUMNS, sheet_gid="1730506931")  # Second sheet (mandalorians)
+try:
+    download_and_clean_csv(CLONES_CSV_FILENAME, EXPECTED_COLUMNS, sheet_gid="0")  # First sheet (clones)
+    download_and_clean_csv(MANDALORIANS_CSV_FILENAME, EXPECTED_COLUMNS, sheet_gid="1730506931")  # Second sheet (mandalorians)
+except Exception as e:
+    print(f"Warning: Could not download CSV files: {e}")
 
 def load_and_clean_df(filename):
     """Load and clean a dataframe"""
@@ -82,8 +85,14 @@ def load_and_clean_df(filename):
     return df
 
 # Load both datasets
-clones_df = load_and_clean_df(CLONES_CSV_FILENAME)
-mandalorians_df = load_and_clean_df(MANDALORIANS_CSV_FILENAME)
+try:
+    clones_df = load_and_clean_df(CLONES_CSV_FILENAME)
+    mandalorians_df = load_and_clean_df(MANDALORIANS_CSV_FILENAME)
+except Exception as e:
+    print(f"Warning: Could not load CSV files: {e}")
+    # Create empty DataFrames as fallback
+    clones_df = pd.DataFrame(columns=EXPECTED_COLUMNS)
+    mandalorians_df = pd.DataFrame(columns=EXPECTED_COLUMNS)
 
 # Create combined dataset
 all_df = pd.concat([clones_df, mandalorians_df], ignore_index=True)
@@ -101,9 +110,12 @@ all_sw_ids = list(set(all_sw_ids))  # Remove duplicates
 MINIFIG_VALUE_SALES_CSV = "all_minifig_value_sales.csv"
 if not os.path.exists(MINIFIG_VALUE_SALES_CSV):
     print(f"{MINIFIG_VALUE_SALES_CSV} not found. Scraping value sales data...")
-    subprocess.run([
-        "python3", "scrap_script.py", *all_sw_ids
-    ], check=True)
+    try:
+        subprocess.run([
+            "python3", "scrap_script.py", *all_sw_ids
+        ], check=True)
+    except Exception as e:
+        print(f"Warning: Could not scrape value sales data: {e}")
 else:
     print(f"Using cached file: {MINIFIG_VALUE_SALES_CSV}")
 
@@ -322,7 +334,11 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
 
 # Helper to create a price history chart for a single minifig
 def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_height=220):
-    df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    try:
+        df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    except FileNotFoundError:
+        # Return empty figure if file doesn't exist
+        return go.Figure()
     minifig_df = df[df["SW_ID"] == swid]
     if minifig_df.empty:
         return go.Figure()
@@ -339,11 +355,11 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
             hoverinfo="skip",
         ),
         go.Scatter(
-        x=minifig_df["Date"],
-        y=minifig_df["Q1"],
-        mode="lines",
+            x=minifig_df["Date"],
+            y=minifig_df["Q1"],
+            mode="lines",
             line=dict(color="rgba(33, 150, 243, 0.5)", width=0),  # No visible line
-        fill='tonexty',
+            fill='tonexty',
             fillcolor="rgba(33, 150, 243, 0.5)",
             showlegend=False,
             hoverinfo="skip",
@@ -371,7 +387,11 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
 # Helper to create a sum-over-time Q3 chart for a group of minifigs
 
 def create_group_q3_sum_chart(swid_list, chart_height=320):
-    df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    try:
+        df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    except FileNotFoundError:
+        # Return empty figure if file doesn't exist
+        return go.Figure()
     group_df = df[df["SW_ID"].isin(swid_list)]
     # Only keep data from 2021 onwards
     group_df = group_df[group_df["Date"] >= pd.Timestamp("2021-01-01")]
@@ -613,9 +633,9 @@ def update_minifig_stats_and_grid(tab_value):
             html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
             html.P(f"Owned: {owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
             html.P(f"Not Owned: {not_owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-        ], style={"flex": "0 0 260px", "minWidth": "180px", "maxWidth": "320px", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
+        ], style={"flex": "0 0 auto", "minWidth": "0", "maxWidth": "100%", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
         html.Div(chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
-    ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
+    ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}", "flexWrap": "wrap"})
     return stats_section, make_minifig_grid(df)
 
 # Responsive bingo grid callbacks for both datasets
