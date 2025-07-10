@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output, State, callback_context
+from dash import dcc, html, Input, Output, State, callback_context, no_update
 import pandas as pd
 import os
 import subprocess
@@ -290,55 +290,6 @@ def make_minifig_grid(df, grid_id_prefix="minifig"):  # grid_id_prefix allows fo
                         "display": "block",
                     },
                 ),
-                html.Div(
-                    [
-                        html.Div(
-                            row["Name of Clone"],
-                            style={
-                                "fontWeight": "bold",
-                                "fontSize": "min(1.1em, 4vw)",  # Shrinks on small screens
-                                "overflowWrap": "break-word",
-                                "wordBreak": "break-word",
-                                "whiteSpace": "normal",
-                                "lineHeight": "1.1",
-                                "maxHeight": "4.4em",  # Allow up to 4 lines
-                                "overflow": "auto",
-                                "width": "100%",
-                                "margin": "0 auto",
-                                "padding": "0 2px",
-                            }
-                        ),
-                        html.Div(
-                            f"${row['Cost (BrickEconomy)']:.2f}",
-                            style={
-                                "fontSize": "1em",
-                                "textAlign": "center",
-                                "width": "100%",
-                                "marginTop": "0.3em"
-                            }
-                        ),
-                    ],
-                    id={"type": f"{grid_id_prefix}-overlay", "index": i},
-                    style={
-                        "position": "absolute",
-                        "top": 0,
-                        "left": 0,
-                        "width": "100%",
-                        "height": "100%",
-                        "background": "rgba(24,28,32,0.97)",
-                        "color": "#fff",
-                        "display": "none",
-                        "alignItems": "flex-start",  # Start near the top
-                        "justifyContent": "flex-start",  # Start near the top
-                        "flexDirection": "column",
-                        "zIndex": 2,
-                        "borderRadius": "10px",
-                        "textAlign": "center",
-                        "padding": "12px 6px",
-                        "fontSize": "1.1em",
-                        "boxShadow": "0 2px 12px #111",
-                    },
-                ),
             ],
                 id={"type": f"{grid_id_prefix}-img", "index": i},
                 n_clicks=0,
@@ -376,24 +327,28 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
     if minifig_df.empty:
         return go.Figure()
     fig = go.Figure()
-    # Q1 line
-    fig.add_trace(go.Scatter(
+    # Only show a 50% transparent blue band between Q1 and Q3, no bounding lines
+    fig.add_traces([
+        go.Scatter(
+            x=minifig_df["Date"],
+            y=minifig_df["Q3"],
+            mode="lines",
+            line=dict(color="rgba(33, 150, 243, 0.5)", width=0),  # No visible line
+            fill=None,
+            showlegend=False,
+            hoverinfo="skip",
+        ),
+        go.Scatter(
         x=minifig_df["Date"],
         y=minifig_df["Q1"],
         mode="lines",
-        name="Q1 (25th %)",
-        line=dict(color="#4fc3f7", width=line_width),
-    ))
-    # Q3 line
-    fig.add_trace(go.Scatter(
-        x=minifig_df["Date"],
-        y=minifig_df["Q3"],
-        mode="lines",
-        name="Q3 (75th %)",
-        line=dict(color="#1976d2", width=line_width),
+            line=dict(color="rgba(33, 150, 243, 0.5)", width=0),  # No visible line
         fill='tonexty',
-        fillcolor="rgba(33, 150, 243, 0.18)",
-    ))
+            fillcolor="rgba(33, 150, 243, 0.5)",
+            showlegend=False,
+            hoverinfo="skip",
+        ),
+    ])
     fig.update_layout(
         title="Price History (Q1–Q3 Band)",
         xaxis_title="Date",
@@ -413,36 +368,163 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
         )
     return fig
 
-# Add a new tab for the HTML/CSS grid
+# Helper to create a sum-over-time Q3 chart for a group of minifigs
+
+def create_group_q3_sum_chart(swid_list, chart_height=320):
+    df = pd.read_csv("all_minifig_value_sales.csv", parse_dates=["Date"])
+    group_df = df[df["SW_ID"].isin(swid_list)]
+    # Only keep data from 2021 onwards
+    group_df = group_df[group_df["Date"] >= pd.Timestamp("2021-01-01")]
+    if group_df.empty:
+        return go.Figure()
+    # For each date, for each minifig, get the most recent Q3 value up to that date
+    all_dates = group_df["Date"].sort_values().unique()
+    all_swids = group_df["SW_ID"].unique()
+    value_by_date = []
+    count_by_date = []
+    for date in all_dates:
+        # For each minifig, get the most recent Q3 value up to this date
+        sub = group_df[group_df["Date"] <= date]
+        latest_q3 = sub.sort_values("Date").groupby("SW_ID").tail(1)
+        value_sum = latest_q3["Q3"].sum()
+        value_by_date.append(value_sum)
+        count_by_date.append(len(latest_q3))
+    import numpy as np
+    fig = go.Figure()
+    # Total Q3 value (left y-axis)
+    fig.add_trace(go.Scatter(
+        x=all_dates,
+        y=value_by_date,
+        mode="lines",
+        line=dict(color="#2196f3", width=3),
+        fill="tozeroy",
+        fillcolor="rgba(33, 150, 243, 0.18)",
+        name="Total Q3 Value",
+        yaxis="y1",
+    ))
+    # Number of minifigs (right y-axis)
+    fig.add_trace(go.Scatter(
+        x=all_dates,
+        y=count_by_date,
+        mode="lines+markers",
+        line=dict(color="#ffbe0b", width=2, dash="dot"),
+        marker=dict(size=6, color="#ffbe0b"),
+        name="# Minifigs",
+        yaxis="y2",
+    ))
+    fig.update_layout(
+        title="Value and Quantity",
+        title_x=0.5,
+        xaxis_title="Date",
+        yaxis=dict(
+            title="Total Q3 Value ($)",
+            showgrid=True,
+            gridcolor=DARK_BORDER,
+            zerolinecolor=DARK_BORDER,
+        ),
+        yaxis2=dict(
+            title="# Minifigs",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+            tickfont=dict(color="#ffbe0b"),
+            titlefont=dict(color="#ffbe0b"),
+        ),
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=chart_height,
+        font={"size": 11},
+        showlegend=False,
+        plot_bgcolor=DARK_BG,
+        paper_bgcolor=DARK_BG,
+        font_color=DARK_TEXT,
+        xaxis=dict(gridcolor=DARK_BORDER, zerolinecolor=DARK_BORDER),
+    )
+    return fig
+
+# Remove Clones, Mandalorians, and All tabs, keep only the Grid tab
 app.layout = html.Div([
-    html.H1("Lego Minifigure Price Trends", style={"textAlign": "center", "fontSize": "2.7em", "marginBottom": "0.2em", "color": DARK_TEXT}),
+    html.H1("Lego Star Wars Collection", style={"textAlign": "center", "fontSize": "2.7em", "marginBottom": "0.2em", "color": DARK_TEXT}),
     dcc.Store(id="page-width-store"),
     dcc.Interval(id="interval", interval=1000, n_intervals=0, max_intervals=1),
-    dcc.Tabs([
-        dcc.Tab(
-            label="Clones", 
-            children=create_dataset_tab(clones_df, clones_stats, "Clones"),
-            style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
-            selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
+    dcc.Tabs(
+        id="minifig-tabs",
+        value="all",
+        children=[
+            dcc.Tab(label="Clones", value="clones",
+                style={
+                    "backgroundColor": DARK_CARD,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
+                selected_style={
+                    "backgroundColor": DARK_ACCENT,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
+            ),
+            dcc.Tab(label="Mandalorians", value="mandalorians",
+                style={
+                    "backgroundColor": DARK_CARD,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
+                selected_style={
+                    "backgroundColor": DARK_ACCENT,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
         ),
-        dcc.Tab(
-            label="Mandalorians", 
-            children=create_dataset_tab(mandalorians_df, mandalorians_stats, "Mandalorians"),
-            style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
-            selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
-        ),
-        dcc.Tab(
-            label="All", 
-            children=create_dataset_tab(all_df, all_stats, "All"),
-            style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
-            selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
-        ),
-        dcc.Tab(
-            label="Grid", 
-            children=[
-                html.H2("All Minifigs - Responsive Grid", style={"textAlign": "center", "color": DARK_TEXT, "marginTop": "1em"}),
-                make_minifig_grid(all_grid_df),
-                html.Div(id="minifig-info-panel", style={"marginTop": "2em", "color": DARK_TEXT, "textAlign": "center", "fontSize": "1.2em"}),
+            dcc.Tab(label="All", value="all",
+                style={
+                    "backgroundColor": DARK_CARD,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
+                selected_style={
+                    "backgroundColor": DARK_ACCENT,
+                    "color": DARK_TEXT,
+                    "border": f"2px solid {DARK_BORDER}",
+                    "fontWeight": "bold",
+                    "fontSize": "1.1em",
+                    "padding": "0.7em 2.2em",
+                    "marginRight": "0.5em",
+                    "borderRadius": "12px 12px 0 0",
+                },
+            ),
+        ],
+        style={"maxWidth": "600px", "margin": "0 auto 1.5em auto", "borderBottom": f"2px solid {DARK_BORDER}", "display": "flex", "flexDirection": "row", "backgroundColor": DARK_BG},
+        parent_className="custom-tabs",
+        className="custom-tabs-container",
+        colors={"background": DARK_BG, "border": DARK_BORDER, "primary": DARK_ACCENT},
+        vertical=False,
+    ),
+    html.Div(id="minifig-stats-summary", style={"maxWidth": "700px", "margin": "0 auto 1.5em auto"}),
+    html.Div(id="minifig-grid-container"),
                 # Modal overlay for minifig popout
                 html.Div(
                     id="minifig-modal-overlay",
@@ -494,12 +576,47 @@ app.layout = html.Div([
                         )
                     ]
                 ),
-            ],
-            style={"backgroundColor": DARK_CARD, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"},
-            selected_style={"backgroundColor": DARK_ACCENT, "color": DARK_TEXT, "border": f"2px solid {DARK_BORDER}"}
-        ),
-    ], style={"backgroundColor": DARK_BG, "color": DARK_TEXT}),
 ], style={"fontFamily": "Segoe UI, Arial, sans-serif", "background": DARK_BG, "padding": "0", "margin": "0", "minHeight": "100vh"})
+
+# Callback to update the stats summary and grid based on selected tab
+@app.callback(
+    [Output("minifig-stats-summary", "children"), Output("minifig-grid-container", "children")],
+    Input("minifig-tabs", "value"),
+)
+def update_minifig_stats_and_grid(tab_value):
+    if tab_value == "clones":
+        df = clones_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
+        label = "Clones"
+    elif tab_value == "mandalorians":
+        df = mandalorians_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
+        label = "Mandalorians"
+    else:
+        df = all_grid_df
+        label = "All Minifigs"
+    owned = df[df["Owned"] == 1]
+    not_owned = df[df["Owned"] == 0]
+    owned_sum = owned["Cost (BrickEconomy)"].sum()
+    not_owned_sum = not_owned["Cost (BrickEconomy)"].sum()
+    owned_count = len(owned)
+    not_owned_count = len(not_owned)
+    # Chart: sum Q3 values over time for all minifigs in this group
+    swid_list = df["SW ID"].dropna().unique().tolist()
+    chart = dcc.Graph(
+        figure=create_group_q3_sum_chart(swid_list),
+        config={"displayModeBar": False},
+        style={"height": "320px", "width": "100%", "margin": "0 auto"}
+    )
+    stats_section = html.Div([
+        html.Div([
+            html.H3(f"{label} Statistics", style={"fontSize": "1.3em", "marginBottom": "0.5em", "color": DARK_TEXT}),
+            html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+            html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+            html.P(f"Owned: {owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+            html.P(f"Not Owned: {not_owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+        ], style={"flex": "0 0 260px", "minWidth": "180px", "maxWidth": "320px", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
+        html.Div(chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
+    ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
+    return stats_section, make_minifig_grid(df)
 
 # Responsive bingo grid callbacks for both datasets
 app.clientside_callback(
@@ -512,262 +629,8 @@ app.clientside_callback(
     Input("interval", "n_intervals"),
 )
 
+# Modal popout callback for grid
 @app.callback(
-    Output("clones-bingo-graph", "figure"),
-    Output("clones-bingo-graph-container", "style"),
-    Output("clones-bingo-graph", "style"),
-    Input("page-width-store", "data")
-)
-def update_clones_bingo_grid(page_width):
-    try:
-        mobile = page_width is not None and page_width < 700
-        if mobile:
-            container_style = {
-                "width": "100vw",
-                "display": "flex",
-                "justifyContent": "center",
-                "paddingLeft": 0,
-                "paddingRight": 0,
-                "margin": "0"
-            }
-            graph_style = {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-            available_width = int(page_width * 0.6)
-            columns = 5
-            max_img_size = int((available_width / 5) * 0.92) * 2
-            max_img_size = max(40, min(220, max_img_size))
-        else:
-            side_padding = 32
-            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
-            graph_style = {"margin": "2em 0 2em 0", "width": "100%", "maxWidth": "1200px", "marginLeft": "auto", "marginRight": "auto"}
-            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-            columns = max(2, int(page_width // 130)) if page_width else 12
-            max_img_size = 130
-        fig = create_bingo_scatter(clones_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        if fig is None or not isinstance(fig, Figure):
-            raise ValueError("Invalid figure returned")
-        return fig, container_style, graph_style
-    except Exception as e:
-        fig = go.Figure()
-        fig.update_layout(
-            title=f"Error loading clones bingo grid: {e}",
-            paper_bgcolor="#181c20",
-            plot_bgcolor="#181c20",
-            font_color="#f3f6fa"
-        )
-        return fig, {"width": "100vw", "display": "flex", "justifyContent": "center", "paddingLeft": 0, "paddingRight": 0, "margin": "0"}, {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-
-@app.callback(
-    Output("mandalorians-bingo-graph", "figure"),
-    Output("mandalorians-bingo-graph-container", "style"),
-    Output("mandalorians-bingo-graph", "style"),
-    Input("page-width-store", "data")
-)
-def update_mandalorians_bingo_grid(page_width):
-    try:
-        mobile = page_width is not None and page_width < 700
-        if mobile:
-            container_style = {
-                "width": "100vw",
-                "display": "flex",
-                "justifyContent": "center",
-                "paddingLeft": 0,
-                "paddingRight": 0,
-                "margin": "0"
-            }
-            graph_style = {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-            available_width = int(page_width * 0.6)
-            columns = 5
-            max_img_size = int((available_width / 5) * 0.92) * 2
-            max_img_size = max(40, min(220, max_img_size))
-        else:
-            side_padding = 32
-            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
-            graph_style = {"margin": "2em 0 2em 0", "width": "100%", "maxWidth": "1200px", "marginLeft": "auto", "marginRight": "auto"}
-            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-            columns = max(2, int(page_width // 130)) if page_width else 12
-            max_img_size = 130
-        fig = create_bingo_scatter(mandalorians_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        if fig is None or not isinstance(fig, Figure):
-            raise ValueError("Invalid figure returned")
-        return fig, container_style, graph_style
-    except Exception as e:
-        fig = go.Figure()
-        fig.update_layout(
-            title=f"Error loading mandalorians bingo grid: {e}",
-            paper_bgcolor="#181c20",
-            plot_bgcolor="#181c20",
-            font_color="#f3f6fa"
-        )
-        return fig, {"width": "100vw", "display": "flex", "justifyContent": "center", "paddingLeft": 0, "paddingRight": 0, "margin": "0"}, {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-
-@app.callback(
-    Output("all-bingo-graph", "figure"),
-    Output("all-bingo-graph-container", "style"),
-    Output("all-bingo-graph", "style"),
-    Input("page-width-store", "data")
-)
-def update_all_bingo_grid(page_width):
-    try:
-        mobile = page_width is not None and page_width < 700
-        if mobile:
-            container_style = {
-                "width": "100vw",
-                "display": "flex",
-                "justifyContent": "center",
-                "paddingLeft": 0,
-                "paddingRight": 0,
-                "margin": "0"
-            }
-            graph_style = {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-            available_width = int(page_width * 0.6)
-            columns = 5
-            max_img_size = int((available_width / 5) * 0.92) * 2
-            max_img_size = max(40, min(220, max_img_size))
-        else:
-            side_padding = 32
-            container_style = {"paddingLeft": side_padding, "paddingRight": side_padding}
-            graph_style = {"margin": "2em 0 2em 0", "width": "100%", "maxWidth": "1200px", "marginLeft": "auto", "marginRight": "auto"}
-            available_width = max(320, page_width - 2 * side_padding) if page_width else 320
-            columns = max(2, int(page_width // 130)) if page_width else 12
-            max_img_size = 130
-        fig = create_bingo_scatter(all_df, columns=columns, dark_mode=True, mobile=mobile, mobile_image_size=max_img_size)
-        if fig is None or not isinstance(fig, Figure):
-            raise ValueError("Invalid figure returned")
-        return fig, container_style, graph_style
-    except Exception as e:
-        fig = go.Figure()
-        fig.update_layout(
-            title=f"Error loading all bingo grid: {e}",
-            paper_bgcolor="#181c20",
-            plot_bgcolor="#181c20",
-            font_color="#f3f6fa"
-        )
-        return fig, {"width": "100vw", "display": "flex", "justifyContent": "center", "paddingLeft": 0, "paddingRight": 0, "margin": "0"}, {"width": "60vw", "minWidth": 0, "margin": "2em 0 2em 0"}
-
-# Pie chart hover callbacks for both datasets
-@app.callback(
-    Output("clones-pie-hover-image-container", "children"),
-    Input("clones-value-pie-chart", "hoverData")
-)
-def display_clones_pie_hover_image(hoverData):
-    if hoverData and 'label' in hoverData['points'][0]:
-        minifig_name = hoverData['points'][0]['label']
-        swid = None
-        if 'customdata' in hoverData['points'][0]:
-            swid = hoverData['points'][0]['customdata'][0]
-        # Fallback: try to find SW ID from clones_df
-        if not swid:
-            row = clones_df[clones_df["Name of Clone"] == minifig_name]
-            if not row.empty:
-                swid = row.iloc[0]["SW ID"]
-        img_path = f"/assets/images/{swid}.png" if swid else None
-        short_name = smart_truncate_name(minifig_name)
-        return html.Div([
-            html.Div([
-                html.Img(src=img_path, style={
-                    "maxWidth": "180px",
-                    "maxHeight": "180px",
-                    "display": "block",
-                    "margin": "auto",
-                }) if img_path else None,
-            ], style={
-                "width": "200px",
-                "height": "200px",
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "background": "#fff",
-                "borderRadius": "18px",
-                "border": f"3px solid {DARK_BORDER}",
-                "margin": "0 auto"
-            }),
-            html.H3(short_name, style={"marginTop": "1.5em", "fontSize": "2em", "color": DARK_TEXT})
-        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "height": "100%"})
-    return html.Div("Hover over a slice to see the minifigure image.", style={"color": DARK_SUBTEXT, "textAlign": "center"})
-
-@app.callback(
-    Output("mandalorians-pie-hover-image-container", "children"),
-    Input("mandalorians-value-pie-chart", "hoverData")
-)
-def display_mandalorians_pie_hover_image(hoverData):
-    if hoverData and 'label' in hoverData['points'][0]:
-        minifig_name = hoverData['points'][0]['label']
-        swid = None
-        if 'customdata' in hoverData['points'][0]:
-            swid = hoverData['points'][0]['customdata'][0]
-        # Fallback: try to find SW ID from mandalorians_df
-        if not swid:
-            row = mandalorians_df[mandalorians_df["Name of Clone"] == minifig_name]
-            if not row.empty:
-                swid = row.iloc[0]["SW ID"]
-        img_path = f"/assets/images/{swid}.png" if swid else None
-        short_name = smart_truncate_name(minifig_name)
-        return html.Div([
-            html.Div([
-                html.Img(src=img_path, style={
-                    "maxWidth": "180px",
-                    "maxHeight": "180px",
-                    "display": "block",
-                    "margin": "auto",
-                }) if img_path else None,
-            ], style={
-                "width": "200px",
-                "height": "200px",
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "background": "#fff",
-                "borderRadius": "18px",
-                "border": f"3px solid {DARK_BORDER}",
-                "margin": "0 auto"
-            }),
-            html.H3(short_name, style={"marginTop": "1.5em", "fontSize": "2em", "color": DARK_TEXT})
-        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "height": "100%"})
-    return html.Div("Hover over a slice to see the minifigure image.", style={"color": DARK_SUBTEXT, "textAlign": "center"})
-
-@app.callback(
-    Output("all-pie-hover-image-container", "children"),
-    Input("all-value-pie-chart", "hoverData")
-)
-def display_all_pie_hover_image(hoverData):
-    if hoverData and 'label' in hoverData['points'][0]:
-        minifig_name = hoverData['points'][0]['label']
-        swid = None
-        if 'customdata' in hoverData['points'][0]:
-            swid = hoverData['points'][0]['customdata'][0]
-        # Fallback: try to find SW ID from all_df
-        if not swid:
-            row = all_df[all_df["Name of Clone"] == minifig_name]
-            if not row.empty:
-                swid = row.iloc[0]["SW ID"]
-        img_path = f"/assets/images/{swid}.png" if swid else None
-        short_name = smart_truncate_name(minifig_name)
-        return html.Div([
-            html.Div([
-                html.Img(src=img_path, style={
-                    "maxWidth": "180px",
-                    "maxHeight": "180px",
-                    "display": "block",
-                    "margin": "auto",
-                }) if img_path else None,
-            ], style={
-                "width": "200px",
-                "height": "200px",
-                "display": "flex",
-                "alignItems": "center",
-                "justifyContent": "center",
-                "background": "#fff",
-                "borderRadius": "18px",
-                "border": f"3px solid {DARK_BORDER}",
-                "margin": "0 auto"
-            }),
-            html.H3(short_name, style={"marginTop": "1.5em", "fontSize": "2em", "color": DARK_TEXT})
-        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "height": "100%"})
-    return html.Div("Hover over a slice to see the minifigure image.", style={"color": DARK_SUBTEXT, "textAlign": "center"})
-
-# Info panel callback for grid
-@app.callback(
-    Output("minifig-info-panel", "children"),
     Output("minifig-modal-overlay", "style"),
     Output("minifig-modal-content", "style"),
     Output("minifig-modal-body", "children"),
@@ -777,14 +640,14 @@ def display_all_pie_hover_image(hoverData):
     State("page-width-store", "data"),
     prevent_initial_call=True,
 )
-def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_width):
+def show_minifig_modal(n_clicks_timestamps, ids, close_n_clicks, page_width):
     ctx = callback_context
     # If close button was clicked, hide modal
     if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("minifig-modal-close"):
-        return dash.no_update, {"display": "none"}, dash.no_update, dash.no_update
+        return {"display": "none"}, no_update, no_update
     # Otherwise, show modal for the most recently clicked minifig
     if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
-        return "Click an image to see details.", {"display": "none"}, dash.no_update, dash.no_update
+        return {"display": "none"}, no_update, no_update
     idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
     i = ids[idx]["index"]
     row = all_grid_df.iloc[i]
@@ -797,18 +660,25 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
     chart_line_width = 4 if mobile else 2
     chart_height = 180 if mobile else 220
 
-    info_panel = html.Div([
-        html.H3(row["Name of Clone"]),
-        html.P(f"Price: ${row['Cost (BrickEconomy)']:.2f}"),
-        html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "160px", "margin": "1em auto", "display": "block", "background": "#fff", "borderRadius": "10px"}),
-    ])
     price_chart = dcc.Graph(
         figure=create_single_minifig_price_chart(row["SW ID"], line_width=chart_line_width, chart_height=chart_height),
         config={"displayModeBar": False},
         style={"height": f"{chart_height}px", "width": "100%", "marginTop": "0"}
     )
     modal_body = html.Div([
-        html.H2(row["Name of Clone"], style={"marginTop": "0", "marginBottom": "1em", "fontSize": "1.1em", "lineHeight": "1.2", "textAlign": "center", "width": "100%"}),
+        html.Div([
+            html.H2(row["Name of Clone"], style={
+                "marginTop": "0",
+                "marginBottom": "1em",
+                "fontSize": "1.1em",
+                "lineHeight": "1.2",
+                "textAlign": "center",
+                # No width or padding here; handled by parent div
+            }),
+        ], style={
+            "width": "80%",
+            "margin": "0 auto",
+        }),
         html.Div([
             html.Div([
                 html.Img(src=f"/assets/images/{row['SW ID']}.png", style={"width": "80%", "maxWidth": img_max_width, "margin": "0 auto 0.7em auto", "display": "block", "background": "#fff", "borderRadius": "10px", "boxShadow": DARK_SHADOW}),
@@ -845,32 +715,7 @@ def show_minifig_info_and_modal(n_clicks_timestamps, ids, close_n_clicks, page_w
         "pointerEvents": "auto",
         "fontSize": "1em",
     }
-    return info_panel, modal_style, modal_content_style, modal_body
-
-@app.callback(
-    Output({"type": "minifig-overlay", "index": dash.ALL}, "style"),
-    Input({"type": "minifig-img", "index": dash.ALL}, "n_clicks_timestamp"),
-    State({"type": "minifig-overlay", "index": dash.ALL}, "style"),
-    prevent_initial_call=True,
-)
-def show_minifig_overlay(n_clicks_timestamps, current_styles):
-    print("Overlay callback fired!")
-    print("n_clicks_timestamps:", n_clicks_timestamps)
-    if not n_clicks_timestamps or all(ts is None for ts in n_clicks_timestamps):
-        print("No image has been clicked yet.")
-        # Hide all overlays
-        return [dict(style, **{"display": "none"}) for style in current_styles]
-    idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
-    print(f"Selected overlay index: {idx}")
-    new_styles = []
-    for i, style in enumerate(current_styles):
-        if i == idx:
-            # Show overlay for clicked image
-            new_style = dict(style, **{"display": "flex"})
-        else:
-            new_style = dict(style, **{"display": "none"})
-        new_styles.append(new_style)
-    return new_styles
+    return modal_style, modal_content_style, modal_body
 
 # Run
 if __name__ == "__main__":
