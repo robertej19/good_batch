@@ -443,12 +443,11 @@ def create_group_q3_sum_chart(swid_list, chart_height=320):
             zerolinecolor=DARK_BORDER,
         ),
         yaxis2=dict(
-            title="# Minifigs",
+            title=dict(text="# Minifigs", font=dict(color="#ffbe0b")),
             overlaying="y",
             side="right",
             showgrid=False,
             tickfont=dict(color="#ffbe0b"),
-            titlefont=dict(color="#ffbe0b"),
         ),
         margin=dict(l=10, r=10, t=40, b=10),
         height=chart_height,
