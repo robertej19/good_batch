@@ -112,7 +112,7 @@ if not os.path.exists(MINIFIG_VALUE_SALES_CSV):
     print(f"{MINIFIG_VALUE_SALES_CSV} not found. Scraping value sales data...")
     try:
         subprocess.run([
-            "python3", "scrap_script.py", *all_sw_ids
+            "python3", "information_scraper.py", *all_sw_ids
         ], check=True)
     except Exception as e:
         print(f"Warning: Could not scrape value sales data: {e}")
@@ -339,15 +339,21 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
     except FileNotFoundError:
         # Return empty figure if file doesn't exist
         return go.Figure()
-    minifig_df = df[df["SW_ID"] == swid]
+    minifig_df = df[df["SW_ID"] == swid].sort_values("Date")
     if minifig_df.empty:
         return go.Figure()
+    # Apply rolling window smoothing (12 months)
+    window = 12
+    minifig_df = minifig_df.set_index("Date")
+    minifig_df["Q1_smooth"] = minifig_df["Q1"].rolling(window=window, min_periods=1, center=True).mean()
+    minifig_df["Q3_smooth"] = minifig_df["Q3"].rolling(window=window, min_periods=1, center=True).mean()
+    minifig_df = minifig_df.reset_index()
     fig = go.Figure()
-    # Only show a 50% transparent blue band between Q1 and Q3, no bounding lines
+    # Only show a 50% transparent blue band between smoothed Q1 and Q3, no bounding lines
     fig.add_traces([
         go.Scatter(
             x=minifig_df["Date"],
-            y=minifig_df["Q3"],
+            y=minifig_df["Q3_smooth"],
             mode="lines",
             line=dict(color="rgba(33, 150, 243, 0.5)", width=0),  # No visible line
             fill=None,
@@ -356,7 +362,7 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
         ),
         go.Scatter(
             x=minifig_df["Date"],
-            y=minifig_df["Q1"],
+            y=minifig_df["Q1_smooth"],
             mode="lines",
             line=dict(color="rgba(33, 150, 243, 0.5)", width=0),  # No visible line
             fill='tonexty',
@@ -366,7 +372,7 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
         ),
     ])
     fig.update_layout(
-        title="Price History (Q1–Q3 Band)",
+        title="Price History (Q1–Q3 Band, Smoothed)",
         xaxis_title="Date",
         yaxis_title="Value ($)",
         margin=dict(l=10, r=10, t=40, b=10),
