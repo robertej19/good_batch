@@ -681,9 +681,10 @@ app.clientside_callback(
     State({"type": "minifig-img", "index": dash.ALL}, "id"),
     Input("minifig-modal-close", "n_clicks"),
     State("page-width-store", "data"),
+    State("minifig-tabs", "value"),  # <-- Add tab value as State
     prevent_initial_call=True,
 )
-def show_minifig_modal(n_clicks_timestamps, ids, close_n_clicks, page_width):
+def show_minifig_modal(n_clicks_timestamps, ids, close_n_clicks, page_width, tab_value):
     ctx = callback_context
     # If close button was clicked, hide modal
     if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("minifig-modal-close"):
@@ -693,7 +694,14 @@ def show_minifig_modal(n_clicks_timestamps, ids, close_n_clicks, page_width):
         return {"display": "none"}, no_update, no_update
     idx = int(np.nanargmax([ts or 0 for ts in n_clicks_timestamps]))
     i = ids[idx]["index"]
-    row = all_grid_df.iloc[i]
+    # Select the correct DataFrame for the current tab
+    if tab_value == "clones":
+        df = clones_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
+    elif tab_value == "mandalorians":
+        df = mandalorians_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
+    else:
+        df = all_grid_df
+    row = df.iloc[i]
 
     # Determine if mobile
     mobile = page_width is not None and page_width < 700
