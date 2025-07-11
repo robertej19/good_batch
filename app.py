@@ -372,7 +372,8 @@ def create_single_minifig_price_chart(swid, dark_mode=True, line_width=2, chart_
         ),
     ])
     fig.update_layout(
-        title="Price History (Q1–Q3 Band, Smoothed)",
+        title="Price History",
+        title_x=0.5,
         xaxis_title="Date",
         yaxis_title="Value ($)",
         margin=dict(l=10, r=10, t=40, b=10),
@@ -626,6 +627,8 @@ def update_minifig_stats_and_grid(tab_value, page_width):
     not_owned_sum = not_owned["Cost (BrickEconomy)"].sum()
     owned_count = len(owned)
     not_owned_count = len(not_owned)
+    total_count = owned_count + not_owned_count
+    percent_owned = int(round(100 * owned_count / total_count)) if total_count else 0
     # Chart: sum Q3 values over time for all minifigs in this group
     swid_list = df["SW ID"].dropna().unique().tolist()
     chart = dcc.Graph(
@@ -642,8 +645,7 @@ def update_minifig_stats_and_grid(tab_value, page_width):
                 html.H3(f"{label} Statistics", style={"fontSize": "1.1em", "marginBottom": "0.4em", "color": DARK_TEXT, "textAlign": "center"}),
                 html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style=text_style),
                 html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style=text_style),
-                html.P(f"Owned: {owned_count}", style=text_style),
-                html.P(f"Not Owned: {not_owned_count}", style=text_style),
+                html.P(f"Owned: {owned_count}/{total_count} ({percent_owned}%)", style=text_style),
             ], style={"width": "100%", "padding": "0", "marginBottom": "0.5em"}),
             html.Div(chart, style={"width": "100%", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
         ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "width": "90%", "margin": "0 auto", "background": DARK_CARD, "borderRadius": "14px", "padding": "0.7em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
@@ -653,8 +655,7 @@ def update_minifig_stats_and_grid(tab_value, page_width):
                 html.H3(f"{label} Statistics", style={"fontSize": "1.3em", "marginBottom": "0.5em", "color": DARK_TEXT}),
                 html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
                 html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-                html.P(f"Owned: {owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-                html.P(f"Not Owned: {not_owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+                html.P(f"Owned: {owned_count}/{total_count} ({percent_owned}%)", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
             ], style={"flex": "0 0 auto", "minWidth": "0", "maxWidth": "100%", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
             html.Div(chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
         ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}", "flexWrap": "wrap"})
