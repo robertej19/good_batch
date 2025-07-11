@@ -437,10 +437,12 @@ def create_group_q3_sum_chart(swid_list, chart_height=320):
         title_x=0.5,
         xaxis_title="Date",
         yaxis=dict(
-            title="Total Q3 Value ($)",
+            title="Collection Value ($)",
             showgrid=True,
             gridcolor=DARK_BORDER,
             zerolinecolor=DARK_BORDER,
+            tickformat="~s",
+            ticksuffix="",
         ),
         yaxis2=dict(
             title=dict(text="# Minifigs", font=dict(color="#ffbe0b")),
