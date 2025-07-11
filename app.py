@@ -631,14 +631,14 @@ def update_minifig_stats_and_grid(tab_value, page_width):
         text_style = {"fontSize": "0.98em", "padding": "0 0.5em", "marginBottom": "1em", "color": DARK_TEXT, "width": "100%", "textAlign": "center"}
         stats_section = html.Div([
             html.Div([
-                html.H3(f"{label} Statistics", style={"fontSize": "1.1em", "marginBottom": "0.4em", "color": DARK_TEXT}),
+                html.H3(f"{label} Statistics", style={"fontSize": "1.1em", "marginBottom": "0.4em", "color": DARK_TEXT, "textAlign": "center"}),
                 html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style=text_style),
                 html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style=text_style),
                 html.P(f"Owned: {owned_count}", style=text_style),
                 html.P(f"Not Owned: {not_owned_count}", style=text_style),
             ], style={"width": "100%", "padding": "0", "marginBottom": "0.5em"}),
             html.Div(chart, style={"width": "100%", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
-        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "width": "100%", "background": DARK_CARD, "borderRadius": "14px", "padding": "0.7em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
+        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "width": "90%", "margin": "0 auto", "background": DARK_CARD, "borderRadius": "14px", "padding": "0.7em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
     else:
         stats_section = html.Div([
             html.Div([
