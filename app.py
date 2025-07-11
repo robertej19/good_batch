@@ -600,9 +600,9 @@ app.layout = html.Div([
 # Callback to update the stats summary and grid based on selected tab
 @app.callback(
     [Output("minifig-stats-summary", "children"), Output("minifig-grid-container", "children")],
-    Input("minifig-tabs", "value"),
+    [Input("minifig-tabs", "value"), Input("page-width-store", "data")],
 )
-def update_minifig_stats_and_grid(tab_value):
+def update_minifig_stats_and_grid(tab_value, page_width):
     if tab_value == "clones":
         df = clones_df.sort_values("Cost (BrickEconomy)", ascending=False).reset_index(drop=True)
         label = "Clones"
@@ -625,16 +625,31 @@ def update_minifig_stats_and_grid(tab_value):
         config={"displayModeBar": False},
         style={"height": "320px", "width": "100%", "margin": "0 auto"}
     )
-    stats_section = html.Div([
-        html.Div([
-            html.H3(f"{label} Statistics", style={"fontSize": "1.3em", "marginBottom": "0.5em", "color": DARK_TEXT}),
-            html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-            html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-            html.P(f"Owned: {owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-            html.P(f"Not Owned: {not_owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
-        ], style={"flex": "0 0 auto", "minWidth": "0", "maxWidth": "100%", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
-        html.Div(chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
-    ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}", "flexWrap": "wrap"})
+    # Responsive layout
+    mobile = page_width is not None and page_width < 700
+    if mobile:
+        text_style = {"fontSize": "0.98em", "padding": "0 0.5em", "marginBottom": "1em", "color": DARK_TEXT, "width": "100%", "textAlign": "center"}
+        stats_section = html.Div([
+            html.Div([
+                html.H3(f"{label} Statistics", style={"fontSize": "1.1em", "marginBottom": "0.4em", "color": DARK_TEXT}),
+                html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style=text_style),
+                html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style=text_style),
+                html.P(f"Owned: {owned_count}", style=text_style),
+                html.P(f"Not Owned: {not_owned_count}", style=text_style),
+            ], style={"width": "100%", "padding": "0", "marginBottom": "0.5em"}),
+            html.Div(chart, style={"width": "100%", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
+        ], style={"display": "flex", "flexDirection": "column", "alignItems": "center", "justifyContent": "center", "width": "100%", "background": DARK_CARD, "borderRadius": "14px", "padding": "0.7em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}"})
+    else:
+        stats_section = html.Div([
+            html.Div([
+                html.H3(f"{label} Statistics", style={"fontSize": "1.3em", "marginBottom": "0.5em", "color": DARK_TEXT}),
+                html.P(f"Total Value (Owned): ${owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+                html.P(f"Total Value (Not Owned): ${not_owned_sum:,.2f}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+                html.P(f"Owned: {owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+                html.P(f"Not Owned: {not_owned_count}", style={"fontSize": "1.1em", "margin": "0.2em", "color": DARK_TEXT}),
+            ], style={"flex": "0 0 auto", "minWidth": "0", "maxWidth": "100%", "padding": "0 1.5em", "display": "flex", "flexDirection": "column", "justifyContent": "center", "alignItems": "flex-start"}),
+            html.Div(chart, style={"flex": "1 1 0", "minWidth": "0", "maxWidth": "100%", "overflow": "hidden", "display": "flex", "alignItems": "center", "justifyContent": "center"}),
+        ], style={"display": "flex", "flexDirection": "row", "alignItems": "stretch", "justifyContent": "center", "width": "100%", "gap": "1.5em", "background": DARK_CARD, "borderRadius": "14px", "padding": "1.1em 0", "boxShadow": DARK_SHADOW, "border": f"2px solid {DARK_BORDER}", "flexWrap": "wrap"})
     return stats_section, make_minifig_grid(df)
 
 # Responsive bingo grid callbacks for both datasets
