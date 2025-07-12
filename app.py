@@ -720,11 +720,17 @@ def show_minifig_modal(n_clicks_timestamps, ids, close_n_clicks, page_width, tab
         html.Div([
             html.H2(row["Name of Clone"], style={
                 "marginTop": "0",
-                "marginBottom": "1em",
+                "marginBottom": "0.3em",
                 "fontSize": "1.1em",
                 "lineHeight": "1.2",
                 "textAlign": "center",
                 # No width or padding here; handled by parent div
+            }),
+            html.Div(row["SW ID"], style={
+                "fontSize": "0.95em",
+                "color": DARK_SUBTEXT,
+                "marginBottom": "1em",
+                "textAlign": "center",
             }),
         ], style={
             "width": "80%",
